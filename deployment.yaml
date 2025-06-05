@@ -1,0 +1,52 @@
+# deployment.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: sinatra-probes-deployment
+  labels:
+    app: sinatra-probes
+spec:
+  replicas: 1 # Start with 1 replica for local testing
+  selector:
+    matchLabels:
+      app: sinatra-probes
+  template:
+    metadata:
+      labels:
+        app: sinatra-probes
+    spec:
+      containers:
+      - name: sinatra-probes-container
+        image: sinatra-k8s-probes:latest # Your locally built image name
+        imagePullPolicy: Never        # <--- IMPORTANT for local images
+        ports:
+        - containerPort: 4567
+        resources: # Optional: Define resource requests and limits
+          requests:
+            memory: "64Mi"
+            cpu: "250m"
+          limits:
+            memory: "128Mi"
+            cpu: "500m"
+        # --- Kubernetes Probes ---
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 4567
+          initialDelaySeconds: 5  # Give the app a few seconds to start
+          periodSeconds: 10       # Check every 10 seconds
+          failureThreshold: 3     # Fail after 3 consecutive failures
+        readinessProbe:
+          httpGet:
+            path: /ready
+            port: 4567
+          initialDelaySeconds: 15 # Give app and DB more time to be ready
+          periodSeconds: 10
+          failureThreshold: 3
+        startupProbe:
+          httpGet:
+            path: /startup
+            port: 4567
+          initialDelaySeconds: 0 # Start checking immediately
+          periodSeconds: 5       # Check every 5 seconds
+          failureThreshold: 20   # Allow up to 100 seconds (20 * 5) for startup
